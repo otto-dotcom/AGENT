@@ -1,0 +1,191 @@
+==================================================
+COPY THIS PROMPT INTO LOVABLE AI TO ADD CAMPAIGNS TO JARVISBOT
+==================================================
+
+Add a complete "Campaigns" section to JarvisBot for managing automated outreach campaigns. This should integrate seamlessly with the existing JarvisBot interface.
+
+## Navigation Structure
+
+Add "Campaigns" to the main sidebar navigation with these sub-pages:
+- /campaigns/dashboard - Campaign metrics overview
+- /campaigns/leads - Lead management table
+- /campaigns/launch - 4-step campaign wizard
+- /campaigns/active - Active campaign monitoring
+- /campaigns/templates - Email/SMS template library
+- /campaigns/analytics - Performance analytics
+
+## Page Specifications
+
+### 1. Campaigns Dashboard (/campaigns/dashboard)
+Display these metrics cards:
+- Total Leads (with count)
+- Emails Sent This Week (with count)
+- SMS Sent This Week (with count)
+- Response Rate (percentage)
+
+Show status breakdown pie chart:
+- New leads
+- Contacted leads
+- Responded leads
+
+Include recent activity feed showing last 10 campaign actions.
+
+### 2. Leads Management (/campaigns/leads)
+Features:
+- Searchable table with columns: Name, Email, Phone, Industry, Location, Status
+- Filter dropdowns for: Status, Industry, Location
+- Clickable rows showing lead details in modal
+- "Select All" checkbox for bulk actions
+- Status badges (green=responded, blue=contacted, gray=new)
+
+### 3. Launch Campaign (/campaigns/launch)
+4-step wizard with progress indicator:
+
+Step 1 - Campaign Setup:
+- Campaign name input
+- Type selector (Email, SMS, Both)
+- Dry run toggle (on by default)
+
+Step 2 - Select Leads:
+- Lead selection table with checkboxes
+- Show selected count
+- Filter options
+
+Step 3 - Choose Template:
+- Template cards showing preview
+- Subject line for emails
+- Character count for SMS
+
+Step 4 - Review & Launch:
+- Summary of all selections
+- Warning banner if dry run is OFF
+- Launch button (primary blue)
+
+### 4. Active Campaigns (/campaigns/active)
+Campaign cards showing:
+- Campaign name and type badge
+- Progress bar (sent/total)
+- Metrics: Sent, Delivered, Opened, Responded
+- Status indicator (running, completed, paused)
+- Created date
+
+### 5. Templates (/campaigns/templates)
+Template library with:
+- Tabs for Email vs SMS templates
+- Template cards with:
+  - Template name
+  - Preview text
+  - "Use Template" button
+- Create new template button
+
+### 6. Analytics (/campaigns/analytics)
+Charts and metrics:
+- Line chart: Emails sent over time
+- Bar chart: Response rates by campaign
+- Pie chart: Campaign type distribution
+- Top performing templates table
+
+## API Integration
+
+Mock these endpoints (we'll connect to real API later):
+
+```javascript
+// GET /api/leads
+{
+  leads: [
+    { id: "1", name: "Business Name", email: "contact@business.com",
+      phone: "+1555000001", industry: "Tech", location: "NYC", status: "new" }
+  ],
+  total: 50
+}
+
+// GET /api/templates
+{
+  templates: [
+    { id: "email_v1", name: "Discovery Email", type: "email",
+      subject: "Quick question", body: "Hi {{name}}..." }
+  ]
+}
+
+// POST /api/campaigns/launch
+{
+  campaign_name: string,
+  campaign_type: "email" | "sms" | "both",
+  template_id: string,
+  lead_ids: string[],
+  dry_run: boolean
+}
+
+// GET /api/campaigns
+{
+  campaigns: [
+    { id: "1", name: "Campaign Name", type: "email", status: "running",
+      sent: 45, delivered: 42, opened: 12, responded: 3 }
+  ]
+}
+
+// GET /api/analytics
+{
+  total_leads: 150,
+  emails_sent: 234,
+  sms_sent: 89,
+  response_rate: 0.23
+}
+```
+
+## Design Guidelines
+
+Colors:
+- Primary: Blue (#3B82F6)
+- Success: Green (#10B981)
+- Warning: Yellow (#F59E0B)
+- Danger: Red (#EF4444)
+- Gray scale for text and borders
+
+Components:
+- Use Lucide React icons (Mail, MessageSquare, Users, BarChart, Settings)
+- Cards with shadow and rounded corners
+- Tables with hover states
+- Buttons with loading states
+- Toast notifications for actions
+
+Typography:
+- Headings: Bold, large
+- Metrics: Extra large numbers
+- Body: Regular weight, readable size
+
+Layout:
+- Responsive grid layout
+- Sidebar navigation (match JarvisBot)
+- Breadcrumbs for sub-pages
+- Consistent spacing
+
+## Key Features
+
+1. Real-time updates: Show campaign progress live
+2. Dry run mode: Test campaigns without sending
+3. Bulk actions: Select multiple leads
+4. Template preview: See before selecting
+5. Analytics dashboard: Track performance
+6. Status badges: Visual indicators
+7. Search and filters: Find leads easily
+8. Responsive design: Works on mobile
+
+## User Flow
+
+Typical campaign launch:
+1. Navigate to "Campaigns" → "Launch Campaign"
+2. Enter campaign name, select type (email)
+3. Select leads from table (with filters)
+4. Choose email template
+5. Review summary
+6. Toggle dry run OFF (with warning)
+7. Click "Launch Campaign"
+8. See success message + redirect to active campaigns
+9. Monitor progress in real-time
+
+Make it beautiful, intuitive, and integrated with JarvisBot's existing design language!
+
+==================================================
+END OF PROMPT
+==================================================

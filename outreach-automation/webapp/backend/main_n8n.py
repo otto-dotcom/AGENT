@@ -15,7 +15,7 @@ import sys
 import os
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'scripts'))
 
 from mcp_airtable_connector import MCPAirtableConnector
 from n8n_workflow_manager import N8nWorkflowManager
@@ -39,11 +39,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-airtable = MCPAirtableConnector()
-n8n_manager = N8nWorkflowManager()
+# Initialize services with correct config paths
+config_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'config')
+config_path = os.path.join(config_dir, 'mcp_config.json')
+
+airtable = MCPAirtableConnector(config_path=config_path)
+n8n_manager = N8nWorkflowManager(config_path=config_path)
 n8n_integration = N8nIntegration()  # New n8n integration
-orchestrator = CampaignOrchestrator()
+orchestrator = CampaignOrchestrator(config_path=config_path)
 personalizer = PersonalizationEngine()
 
 # Pydantic models

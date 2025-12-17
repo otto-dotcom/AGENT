@@ -1,0 +1,258 @@
+{
+  "name": "RESPONSE_TRACKER",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "response-webhook",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Response Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "response-tracker-webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse incoming response\nconst responseData = items[0].json;\n\n// Extract key information\nconst emailOrPhone = responseData.from || responseData.From;\nconst messageContent = responseData.text || responseData.Body || '';\nconst responseType = responseData.type || (emailOrPhone.includes('@') ? 'email' : 'sms');\n\n// Analyze sentiment from response\nconst content = messageContent.toLowerCase();\nlet sentiment = 'neutral';\nlet interested = false;\n\n// Positive indicators\nif (content.match(/yes|yeah|sure|interested|definitely|absolutely|sounds good|let's talk|call me/)) {\n  sentiment = 'positive';\n  interested = true;\n}\n\n// Negative indicators\nif (content.match(/no|not interested|stop|remove|unsubscribe|don't contact/)) {\n  sentiment = 'negative';\n  interested = false;\n}\n\n// Question or request for info\nif (content.match(/\\?|what|how|when|tell me more|details|info/)) {\n  sentiment = 'curious';\n  interested = true;\n}\n\nreturn [{\n  json: {\n    ...responseData,\n    contact: emailOrPhone,\n    message: messageContent,\n    responseType: responseType,\n    sentiment: sentiment,\n    interested: interested,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "analyze-response",
+      "name": "Analyze Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "options": {
+          "filterByFormula": "OR({Email}='{{$json.contact}}', {Phone Number}='{{$json.contact}}')"
+        }
+      },
+      "id": "airtable-find-lead",
+      "name": "Find Lead Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.interested}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-interested",
+      "name": "If Interested?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "id": "={{$json.id}}",
+        "fields": {
+          "customFieldsValues": [
+            {
+              "fieldId": "Status",
+              "fieldValue": "Responded - Interested"
+            },
+            {
+              "fieldId": "Response Date",
+              "fieldValue": "={{$json.timestamp}}"
+            },
+            {
+              "fieldId": "Response Type",
+              "fieldValue": "={{$json.responseType}}"
+            },
+            {
+              "fieldId": "Response Content",
+              "fieldValue": "={{$json.message}}"
+            },
+            {
+              "fieldId": "Response Sentiment",
+              "fieldValue": "={{$json.sentiment}}"
+            }
+          ]
+        }
+      },
+      "id": "airtable-update-interested",
+      "name": "Mark as Interested",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [1050, 200],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "id": "={{$json.id}}",
+        "fields": {
+          "customFieldsValues": [
+            {
+              "fieldId": "Status",
+              "fieldValue": "Responded - Not Interested"
+            },
+            {
+              "fieldId": "Response Date",
+              "fieldValue": "={{$json.timestamp}}"
+            },
+            {
+              "fieldId": "Response Type",
+              "fieldValue": "={{$json.responseType}}"
+            },
+            {
+              "fieldId": "Response Content",
+              "fieldValue": "={{$json.message}}"
+            },
+            {
+              "fieldId": "Response Sentiment",
+              "fieldValue": "={{$json.sentiment}}"
+            }
+          ]
+        }
+      },
+      "id": "airtable-update-not-interested",
+      "name": "Mark as Not Interested",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [1050, 400],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendEmail",
+        "fromEmail": "${SENDER_EMAIL}",
+        "toEmail": "=${TEAM_EMAIL}",
+        "subject": "🎉 New Interested Lead: {{$json.fields['Company Name']}}",
+        "text": "Great news! We have a positive response from:\n\nCompany: {{$json.fields['Company Name']}}\nContact: {{$json.fields['Contact Person']}}\nEmail: {{$json.fields['Email']}}\nPhone: {{$json.fields['Phone Number']}}\n\nTheir response:\n{{$json.message}}\n\nResponse Type: {{$json.responseType}}\nSentiment: {{$json.sentiment}}\n\nNext steps: Schedule a call!",
+        "options": {}
+      },
+      "id": "notify-team-interested",
+      "name": "Notify Team (Interested)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate automatic response based on sentiment\nconst sentiment = items[0].json.sentiment;\nconst firstName = items[0].json.fields['Contact Person'].split(' ')[0];\nconst responseType = items[0].json.responseType;\n\nlet responseMessage = '';\n\nif (sentiment === 'positive') {\n  responseMessage = `Awesome! Here's my calendar: [calendar_link]. Or I can call you - what's best?`;\n} else if (sentiment === 'curious') {\n  responseMessage = `Thanks for asking, ${firstName}! I'll send you a quick email with details. Should be in your inbox in 2 minutes.`;\n} else if (sentiment === 'negative') {\n  responseMessage = `No problem, ${firstName}! I've removed you from my list. You won't hear from me again. Best of luck!`;\n}\n\nreturn [{\n  json: {\n    ...items[0].json,\n    autoResponse: responseMessage\n  }\n}];"
+      },
+      "id": "generate-auto-response",
+      "name": "Generate Auto Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    }
+  ],
+  "connections": {
+    "Response Webhook": {
+      "main": [
+        [
+          {
+            "node": "Analyze Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Response": {
+      "main": [
+        [
+          {
+            "node": "Find Lead Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Lead Record": {
+      "main": [
+        [
+          {
+            "node": "If Interested?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Interested?": {
+      "main": [
+        [
+          {
+            "node": "Mark as Interested",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark as Not Interested",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Interested": {
+      "main": [
+        [
+          {
+            "node": "Notify Team (Interested)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Not Interested": {
+      "main": [
+        [
+          {
+            "node": "Generate Auto Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "tags": ["outreach", "response", "tracking"]
+}

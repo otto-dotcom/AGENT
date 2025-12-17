@@ -1,0 +1,162 @@
+{
+  "template_version": "1.0",
+  "last_updated": "2025-12-17",
+  "description": "Email templates following Nate Herk's personalization at scale methodology",
+
+  "personalization_variables": {
+    "firstName": "Contact's first name",
+    "companyName": "Business name",
+    "industry": "Business category/industry",
+    "location": "Canton or city in Switzerland",
+    "canton": "Swiss canton",
+    "city": "City name",
+    "aiInsight": "AI-generated personalized insight",
+    "painPoint": "Industry-specific challenge",
+    "competitor": "Competitor in their space",
+    "recentNews": "Recent company update or news",
+    "website": "Company website",
+    "senderName": "Otto",
+    "senderCompany": "Your company name"
+  },
+
+  "templates": [
+    {
+      "id": "email_v1_discovery",
+      "name": "Discovery - Local Business Growth",
+      "type": "initial_outreach",
+      "subject_lines": [
+        "{{firstName}}, quick question about {{companyName}}",
+        "{{companyName}} + [Your Solution] in {{location}}?",
+        "Noticed {{companyName}} in {{canton}}...",
+        "{{firstName}} - opportunity for {{companyName}}"
+      ],
+      "body": "Hi {{firstName}},\n\nI came across {{companyName}} while researching businesses in {{location}} and was impressed by {{aiInsight}}.\n\nI work with companies in the {{industry}} sector helping them {{painPoint}}. Many businesses we work with in {{canton}} have seen significant improvements in [specific metric].\n\n{{recentNews}}\n\nWould you be open to a brief conversation about how we might help {{companyName}} achieve similar results?\n\nNo pressure - just thought it might be worth exploring.\n\nBest regards,\n{{senderName}}\n\nP.S. {{aiInsight}} - this really caught my attention about your business.",
+      "tone": "friendly_professional",
+      "word_count": 120
+    },
+    {
+      "id": "email_v2_value_prop",
+      "name": "Value Proposition - Direct Benefit",
+      "type": "initial_outreach",
+      "subject_lines": [
+        "{{firstName}}: 3 ways {{companyName}} could grow",
+        "Quick win for {{companyName}} in {{location}}",
+        "{{companyName}} - are you doing this?",
+        "{{firstName}}, your competitors in {{canton}} are doing this"
+      ],
+      "body": "Hi {{firstName}},\n\nI'll get straight to the point:\n\nI noticed {{companyName}} is in the {{industry}} space in {{location}}. Based on what I've seen, here are 3 opportunities that could help:\n\n1. {{painPoint}}\n2. [Specific opportunity based on industry]\n3. [Competitive advantage possibility]\n\n{{aiInsight}}\n\nWe've helped similar businesses in {{canton}} achieve [specific result]. Would a 15-minute call be useful to explore if this makes sense for {{companyName}}?\n\nYou can reply to this email or grab a time here: [calendar link]\n\nCheers,\n{{senderName}}\n\nP.S. Even if the timing isn't right, I'd be happy to share some insights about what's working in your industry right now.",
+      "tone": "direct_valuable",
+      "word_count": 130
+    },
+    {
+      "id": "email_v3_social_proof",
+      "name": "Social Proof - Local Success Stories",
+      "type": "initial_outreach",
+      "subject_lines": [
+        "How [Similar Company] in {{canton}} grew 40%",
+        "{{firstName}} - this worked for {{competitor}}",
+        "{{companyName}}: What [Industry Leader] is doing",
+        "Case study: {{industry}} success in {{location}}"
+      ],
+      "body": "Hi {{firstName}},\n\nI wanted to reach out because we recently worked with [similar company] in {{canton}} and the results were remarkable:\n\n• [Specific metric improvement]\n• [Another concrete result]\n• [Third impressive outcome]\n\nThey were facing {{painPoint}} - which I imagine might resonate with challenges at {{companyName}}.\n\n{{aiInsight}}\n\nGiven your position in {{location}}'s {{industry}} sector, I thought you might find their approach interesting.\n\nWould you like me to send over the case study? Or if you prefer, we could have a quick call to discuss how it might apply to {{companyName}}.\n\nWhat works better for you?\n\nBest,\n{{senderName}}\n\nP.S. No strings attached - even if we never work together, I think you'd find the insights valuable.",
+      "tone": "story_driven",
+      "word_count": 140
+    }
+  ],
+
+  "followup_templates": [
+    {
+      "id": "followup_v1_gentle",
+      "name": "Gentle Follow-up",
+      "type": "followup",
+      "timing_days": 7,
+      "subject_lines": [
+        "Re: {{previousSubject}}",
+        "{{firstName}} - following up",
+        "Did you get a chance to see this, {{firstName}}?",
+        "Quick bump on this, {{firstName}}"
+      ],
+      "body": "Hi {{firstName}},\n\nI know you're busy, so I'll keep this brief.\n\nI reached out last week about helping {{companyName}} with {{painPoint}}. I totally understand if the timing isn't right or if it's not a fit.\n\nIf you're interested, I'd still love to have that conversation. If not, just let me know and I won't bother you again.\n\nEither way, I hope {{companyName}} continues to thrive in {{location}}.\n\nBest,\n{{senderName}}",
+      "tone": "respectful_brief",
+      "word_count": 70
+    },
+    {
+      "id": "followup_v2_value_add",
+      "name": "Value-Add Follow-up",
+      "type": "followup",
+      "timing_days": 7,
+      "subject_lines": [
+        "{{firstName}} - thought you'd find this useful",
+        "Free resource for {{companyName}}",
+        "{{firstName}}: Quick tip for {{industry}} businesses",
+        "This might help {{companyName}}"
+      ],
+      "body": "Hi {{firstName}},\n\nI wanted to follow up, but rather than just asking again, I thought I'd share something that might be immediately useful for {{companyName}}:\n\n[Specific tip, resource, or insight related to their industry]\n\nThis has been working really well for other {{industry}} businesses in {{canton}}.\n\nStill happy to chat if you'd like to explore how we could help {{companyName}} specifically, but either way, hope this is helpful.\n\nBest,\n{{senderName}}\n\nP.S. If you're not interested in hearing from me, just reply with \"not interested\" and I'll remove you from my list immediately.",
+      "tone": "helpful_generous",
+      "word_count": 95
+    },
+    {
+      "id": "followup_v3_breakup",
+      "name": "Break-up Email",
+      "type": "final_followup",
+      "timing_days": 14,
+      "subject_lines": [
+        "{{firstName}} - should I close your file?",
+        "Last email, I promise",
+        "Closing the loop on this",
+        "{{firstName}}: is this a no?"
+      ],
+      "body": "Hi {{firstName}},\n\nI've reached out a couple of times about helping {{companyName}} with {{painPoint}}, but I haven't heard back.\n\nThat's totally fine - I know things get busy and this might not be a priority right now.\n\nI'm going to assume it's not a fit and won't reach out again unless you tell me otherwise.\n\nIf I'm wrong and you're still interested, just reply to this email and we can set up that call.\n\nEither way, I wish you and {{companyName}} all the best in {{location}}.\n\nCheers,\n{{senderName}}",
+      "tone": "respectful_final",
+      "word_count": 85
+    }
+  ],
+
+  "response_templates": {
+    "interested_reply": {
+      "subject": "Re: {{originalSubject}}",
+      "body": "Hi {{firstName}},\n\nThanks for getting back to me! I'm excited to chat.\n\nHere's my calendar link: [calendar link]\n\nOr if you prefer, I'm available:\n• [Time slot 1]\n• [Time slot 2]\n• [Time slot 3]\n\nJust let me know what works best for you.\n\nLooking forward to it!\n\n{{senderName}}"
+    },
+    "not_interested_reply": {
+      "subject": "Re: {{originalSubject}}",
+      "body": "Hi {{firstName}},\n\nNo problem at all - I appreciate you letting me know.\n\nI've removed you from my outreach list. You won't hear from me again unless you reach out.\n\nIf anything changes in the future, feel free to reach back out.\n\nBest of luck with {{companyName}}!\n\n{{senderName}}"
+    },
+    "timing_reply": {
+      "subject": "Re: {{originalSubject}}",
+      "body": "Hi {{firstName}},\n\nTotally understand - timing is everything!\n\nWhen would be a better time for me to check back in? I'm happy to reach out in [timeframe] if that works better.\n\nJust let me know and I'll make a note.\n\nThanks!\n\n{{senderName}}"
+    }
+  },
+
+  "best_practices": {
+    "subject_line_tips": [
+      "Keep under 50 characters",
+      "Personalize with firstName or companyName",
+      "Create curiosity without being clickbait",
+      "Avoid spam trigger words (free, guarantee, act now)",
+      "Test multiple variations"
+    ],
+    "body_tips": [
+      "Keep under 150 words for initial outreach",
+      "Use short paragraphs (2-3 lines max)",
+      "Include ONE clear call-to-action",
+      "Personalize at least 3 elements per email",
+      "Always include an easy out",
+      "Add a P.S. with additional personalization"
+    ],
+    "timing": {
+      "best_days": ["Tuesday", "Wednesday", "Thursday"],
+      "best_times": ["09:00-10:00", "14:00-15:00"],
+      "avoid": ["Monday morning", "Friday afternoon", "Weekends"]
+    }
+  },
+
+  "compliance": {
+    "required_elements": [
+      "Unsubscribe link in footer",
+      "Physical mailing address",
+      "Clear sender identification",
+      "Honest subject line"
+    ],
+    "gdpr_notice": "By sending to EU contacts, you must comply with GDPR requirements including legitimate interest justification and easy opt-out mechanism."
+  }
+}

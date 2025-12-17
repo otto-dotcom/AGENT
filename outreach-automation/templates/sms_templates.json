@@ -1,0 +1,181 @@
+{
+  "template_version": "1.0",
+  "last_updated": "2025-12-17",
+  "description": "SMS templates optimized for 160 character limit with high engagement rates",
+
+  "personalization_variables": {
+    "firstName": "Contact's first name",
+    "companyName": "Business name (abbreviated if needed)",
+    "location": "City or canton",
+    "industry": "Business category",
+    "senderName": "Otto"
+  },
+
+  "character_limit": 160,
+  "best_practices": {
+    "rules": [
+      "Stay under 160 characters to avoid splitting",
+      "Always include opt-out mechanism",
+      "Send only during business hours (10:00-20:00)",
+      "Personalize with firstName",
+      "Include clear CTA",
+      "Keep tone casual but professional",
+      "Make response easy (YES/NO)"
+    ],
+    "timing": {
+      "send_window": "10:00-20:00 local time",
+      "best_times": ["11:00", "14:00", "16:00"],
+      "avoid": ["Early morning", "Late evening", "Weekends before 12:00"]
+    }
+  },
+
+  "templates": [
+    {
+      "id": "sms_v1_direct",
+      "name": "Direct Question",
+      "type": "initial_sms",
+      "character_count": 155,
+      "body": "Hi {{firstName}}! Quick Q about {{companyName}} in {{location}}. Helped similar {{industry}} biz grow 40%. Worth a quick chat? Reply YES. -{{senderName}}",
+      "tone": "casual_direct",
+      "expected_response_rate": "8-12%"
+    },
+    {
+      "id": "sms_v2_value",
+      "name": "Value Proposition",
+      "type": "initial_sms",
+      "character_count": 158,
+      "body": "{{firstName}} - noticed {{companyName}}. We help {{industry}} in {{location}} with [benefit]. 5min call? Reply YES for my calendar. -{{senderName}}",
+      "tone": "professional_brief",
+      "expected_response_rate": "6-10%"
+    },
+    {
+      "id": "sms_v3_curiosity",
+      "name": "Curiosity Hook",
+      "type": "initial_sms",
+      "character_count": 152,
+      "body": "{{firstName}}, saw {{companyName}} online. Have an idea that could help. Quick call this week? Reply YES or call me. -{{senderName}} [phone]",
+      "tone": "intriguing",
+      "expected_response_rate": "7-11%"
+    },
+    {
+      "id": "sms_v4_local",
+      "name": "Local Connection",
+      "type": "initial_sms",
+      "character_count": 159,
+      "body": "Hi {{firstName}}! Working with {{industry}} businesses in {{location}}. Quick question about {{companyName}}. Got 2 min? Reply YES. -{{senderName}}",
+      "tone": "local_friendly",
+      "expected_response_rate": "7-10%"
+    }
+  ],
+
+  "followup_templates": [
+    {
+      "id": "sms_followup_v1_gentle",
+      "name": "Gentle Follow-up",
+      "type": "followup_sms",
+      "timing_days": 3,
+      "character_count": 142,
+      "body": "{{firstName}} - following up on my message about {{companyName}}. Still interested? Reply YES or NO so I know. Thanks! -{{senderName}}",
+      "tone": "polite_brief"
+    },
+    {
+      "id": "sms_followup_v2_last",
+      "name": "Last Try",
+      "type": "final_followup_sms",
+      "timing_days": 7,
+      "character_count": 138,
+      "body": "{{firstName}}, last message I promise! Still want to chat about {{companyName}}? Reply YES. Otherwise I'll stop bugging you. -{{senderName}}",
+      "tone": "respectful_final"
+    }
+  ],
+
+  "response_templates": {
+    "positive_response": {
+      "trigger_keywords": ["yes", "yeah", "sure", "interested", "ok", "okay"],
+      "reply": "Awesome! Here's my calendar: [short_link]. Or I can call you - what's best?"
+    },
+    "negative_response": {
+      "trigger_keywords": ["no", "not interested", "stop", "remove"],
+      "reply": "No problem! I've removed you. Won't message again. Best of luck with {{companyName}}! -{{senderName}}"
+    },
+    "timing_response": {
+      "trigger_keywords": ["later", "timing", "busy", "month"],
+      "reply": "Understood! When should I check back? Reply with a timeframe (e.g., '2 weeks', 'next month'). -{{senderName}}"
+    },
+    "info_request": {
+      "trigger_keywords": ["what", "who", "tell me more", "info", "details"],
+      "reply": "I help {{industry}} businesses with [specific value prop]. Can I send you a quick email with details? -{{senderName}}"
+    }
+  },
+
+  "opt_out_templates": {
+    "stop_keywords": ["STOP", "UNSUBSCRIBE", "REMOVE", "QUIT"],
+    "automatic_reply": "You've been removed. Won't text again. Thanks! -{{senderName}}",
+    "help_keywords": ["HELP", "INFO"],
+    "help_reply": "This is {{senderName}} from [company]. To stop messages reply STOP. For info reply INFO."
+  },
+
+  "ab_testing": {
+    "test_groups": [
+      {
+        "group": "A",
+        "template_id": "sms_v1_direct",
+        "percentage": 33
+      },
+      {
+        "group": "B",
+        "template_id": "sms_v2_value",
+        "percentage": 33
+      },
+      {
+        "group": "C",
+        "template_id": "sms_v3_curiosity",
+        "percentage": 34
+      }
+    ],
+    "metrics_to_track": [
+      "delivery_rate",
+      "response_rate",
+      "positive_response_rate",
+      "opt_out_rate",
+      "time_to_response"
+    ]
+  },
+
+  "compliance": {
+    "required": [
+      "Sender identification",
+      "Clear opt-out instructions",
+      "Respect opt-out requests immediately",
+      "Send only during reasonable hours",
+      "Keep records of consent"
+    ],
+    "twilio_requirements": {
+      "registered_sender": true,
+      "opt_out_handling": "automatic",
+      "carrier_filtering": "A2P 10DLC registration recommended"
+    },
+    "swiss_regulations": {
+      "consent_required": true,
+      "business_hours_only": true,
+      "opt_out_must_be_free": true
+    }
+  },
+
+  "performance_benchmarks": {
+    "delivery_rate_target": "98%",
+    "response_rate_target": "8-12%",
+    "positive_response_target": "50% of responses",
+    "opt_out_rate_acceptable": "<2%",
+    "optimal_send_volume": "30-50 per day max"
+  },
+
+  "character_optimization_tips": [
+    "Use '&' instead of 'and'",
+    "Abbreviate company names if necessary",
+    "Use short URLs (bit.ly, etc.)",
+    "Remove unnecessary words",
+    "Use numbers instead of spelling them out",
+    "Consider emojis sparingly (they count as 1-2 chars)"
+  ]
+}

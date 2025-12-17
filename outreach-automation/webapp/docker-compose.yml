@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ../scripts:/app/scripts
+      - ../templates:/app/templates
+      - ../config:/app/config
+    environment:
+      - AIRTABLE_API_KEY=${AIRTABLE_API_KEY}
+      - AIRTABLE_BASE_ID=${AIRTABLE_BASE_ID}
+      - N8N_API_KEY=${N8N_API_KEY}
+      - N8N_API_URL=${N8N_API_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - MAILCHIMP_API_KEY=${MAILCHIMP_API_KEY}
+      - DRY_RUN_MODE=${DRY_RUN_MODE:-true}
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - outreach-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - outreach-network
+
+networks:
+  outreach-network:
+    driver: bridge

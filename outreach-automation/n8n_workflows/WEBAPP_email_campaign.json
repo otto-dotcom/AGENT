@@ -1,0 +1,364 @@
+{
+  "name": "WEBAPP_EMAIL_CAMPAIGN",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "email-campaign",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Campaign Launch",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "webapp-email-campaign"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse incoming web app data\nconst input = items[0].json;\n\n// Extract campaign configuration\nconst campaign = input.campaign || {};\nconst leads = input.leads || [];\nconst settings = input.settings || {};\nconst metadata = input.metadata || {};\n\n// Log for debugging\nconsole.log('Campaign:', campaign.name);\nconsole.log('Lead count:', leads.length);\nconsole.log('Dry run:', campaign.dry_run);\n\n// Return formatted data\nreturn items.map(item => ({\n  json: {\n    campaign_id: metadata.campaign_id,\n    campaign_name: campaign.name,\n    campaign_type: campaign.type,\n    template_id: campaign.template_id,\n    dry_run: campaign.dry_run,\n    lead_count: leads.length,\n    leads: leads,\n    rate_limit: settings.rate_limit,\n    timestamp: new Date().toISOString()\n  }\n}));"
+      },
+      "id": "parse-webapp-input",
+      "name": "Parse Web App Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.dry_run}}",
+              "value2": false
+            }
+          ]
+        }
+      },
+      "id": "check-dry-run",
+      "name": "Check Dry Run Mode",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// DRY RUN MODE - Log what would happen\nconst campaign = items[0].json;\n\nconsole.log('=== DRY RUN MODE ===');\nconsole.log(`Campaign: ${campaign.campaign_name}`);\nconsole.log(`Would send to ${campaign.lead_count} leads`);\nconsole.log(`Template: ${campaign.template_id}`);\nconsole.log('No actual emails sent');\n\nreturn items.map(item => ({\n  json: {\n    ...item.json,\n    status: 'dry_run_complete',\n    emails_sent: 0,\n    message: 'Dry run completed - no emails sent'\n  }\n}));"
+      },
+      "id": "dry-run-handler",
+      "name": "Dry Run Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "options": {
+          "filterByFormula": "FIND(RECORD_ID(), '{{$json.leads.map(l => l.record_id).join(',')}}')"
+        }
+      },
+      "id": "airtable-get-lead-details",
+      "name": "Get Lead Details from Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [850, 400],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// For each lead, prepare personalized email\nconst templateId = $node['Parse Web App Input'].json.template_id;\nconst rateLimit = $node['Parse Web App Input'].json.rate_limit;\n\nreturn items.map((item, index) => {\n  const lead = item.json.fields;\n  const firstName = (lead['Contact Person'] || '').split(' ')[0] || 'there';\n  \n  return {\n    json: {\n      record_id: item.json.id,\n      email: lead['Email'],\n      firstName: firstName,\n      companyName: lead['Company Name'],\n      industry: lead['Industry'],\n      location: lead['Location'],\n      aiInsight: lead['AI Insight'],\n      painPoint: lead['Pain Point'],\n      templateId: templateId,\n      delay: index * (rateLimit?.delay_between_sends || 2) * 1000\n    }\n  };\n});"
+      },
+      "id": "prepare-personalized-emails",
+      "name": "Prepare Personalized Emails",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4-turbo-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert email copywriter. Generate personalized, engaging email content."
+            },
+            {
+              "role": "user",
+              "content": "Generate a personalized email for:\n\nCompany: {{$json.companyName}}\nContact: {{$json.firstName}}\nIndustry: {{$json.industry}}\nLocation: {{$json.location}}\nInsight: {{$json.aiInsight}}\nPain Point: {{$json.painPoint}}\n\nGenerate subject and body following this style:\n- Friendly but professional\n- Reference their specific business\n- Mention the pain point naturally\n- Include soft call-to-action\n- Keep under 150 words\n\nReturn as JSON:\n{\n  \"subject\": \"...\",\n  \"body\": \"...\"\n}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 300
+        }
+      },
+      "id": "openai-generate-email",
+      "name": "Generate Email with AI",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [1250, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "={{$json.delay}}",
+        "unit": "ms"
+      },
+      "id": "rate-limiter",
+      "name": "Rate Limiter",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "fromEmail": "${SENDER_EMAIL}",
+        "toEmail": "={{$json.email}}",
+        "subject": "={{JSON.parse($json.choices[0].message.content).subject}}",
+        "text": "={{JSON.parse($json.choices[0].message.content).body}}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "send-email",
+      "name": "Send Email via Mailchimp",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1650, 400]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "id": "={{$json.record_id}}",
+        "fields": {
+          "customFieldsValues": [
+            {
+              "fieldId": "Status",
+              "fieldValue": "Email Sent"
+            },
+            {
+              "fieldId": "Email Sent Date",
+              "fieldValue": "={{$now.toISO()}}"
+            },
+            {
+              "fieldId": "Campaign ID",
+              "fieldValue": "={{$node['Parse Web App Input'].json.campaign_id}}"
+            }
+          ]
+        }
+      },
+      "id": "airtable-update-status",
+      "name": "Update Lead Status",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [1850, 400],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Aggregate results\nconst campaignId = $node['Parse Web App Input'].json.campaign_id;\nconst dryRun = $node['Parse Web App Input'].json.dry_run;\n\nconst results = {\n  campaign_id: campaignId,\n  status: dryRun ? 'dry_run_complete' : 'completed',\n  emails_sent: dryRun ? 0 : items.length,\n  timestamp: new Date().toISOString(),\n  leads_processed: items.map(item => ({\n    record_id: item.json.record_id || item.json.id,\n    status: dryRun ? 'dry_run' : 'sent'\n  }))\n};\n\nreturn [{ json: results }];"
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2050, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Parse Web App Input'].json.settings?.notification_webhook || 'http://localhost:8000/api/webhooks/campaign-complete'}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{JSON.stringify($json)}}",
+        "options": {}
+      },
+      "id": "notify-webapp",
+      "name": "Notify Web App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [2250, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json)}}",
+        "options": {}
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Campaign Launch": {
+      "main": [
+        [
+          {
+            "node": "Parse Web App Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Web App Input": {
+      "main": [
+        [
+          {
+            "node": "Check Dry Run Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Dry Run Mode": {
+      "main": [
+        [
+          {
+            "node": "Dry Run Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Lead Details from Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dry Run Handler": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Lead Details from Airtable": {
+      "main": [
+        [
+          {
+            "node": "Prepare Personalized Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Personalized Emails": {
+      "main": [
+        [
+          {
+            "node": "Generate Email with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Email with AI": {
+      "main": [
+        [
+          {
+            "node": "Rate Limiter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limiter": {
+      "main": [
+        [
+          {
+            "node": "Send Email via Mailchimp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email via Mailchimp": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead Status": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Notify Web App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Web App": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2",
+  "tags": ["webapp", "email", "campaign", "automated"]
+}

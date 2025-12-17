@@ -240,4 +240,5 @@ litellm_uuid.txt
 .aider*
 file.txt
 numbers.txt
-poetry.lockoutreach-automation/webapp/frontend/node_modules/
+poetry.lock
+node_modules/

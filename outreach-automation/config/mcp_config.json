@@ -1,0 +1,105 @@
+{
+  "mcpServers": {
+    "airtable": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-airtable"
+      ],
+      "env": {
+        "AIRTABLE_API_KEY": "${AIRTABLE_API_KEY}",
+        "AIRTABLE_BASE_ID": "${AIRTABLE_BASE_ID}"
+      },
+      "description": "Connects to Kronos Airtable database for lead management",
+      "capabilities": [
+        "read_records",
+        "write_records",
+        "update_records",
+        "list_tables",
+        "query_records"
+      ]
+    },
+    "n8n": {
+      "command": "python",
+      "args": [
+        "-m",
+        "outreach_automation.mcp_servers.n8n_server"
+      ],
+      "env": {
+        "N8N_API_URL": "https://fagiolinosssssss.app.n8n.cloud",
+        "N8N_API_KEY": "${N8N_API_KEY}"
+      },
+      "description": "Connects to n8n instance for workflow execution",
+      "capabilities": [
+        "list_workflows",
+        "execute_workflow",
+        "get_execution_status",
+        "get_execution_data",
+        "trigger_webhook"
+      ]
+    }
+  },
+  "airtable": {
+    "base_name": "Kronos Switzerland",
+    "base_id": "${AIRTABLE_BASE_ID}",
+    "tables": {
+      "leads": {
+        "name": "Leads",
+        "description": "Main leads table with business information"
+      },
+      "campaigns": {
+        "name": "Campaigns",
+        "description": "Campaign tracking and management"
+      },
+      "responses": {
+        "name": "Responses",
+        "description": "Lead responses and interactions"
+      }
+    }
+  },
+  "n8n": {
+    "instance_url": "https://fagiolinosssssss.app.n8n.cloud",
+    "workflows": {
+      "lead_enrichment": {
+        "name": "LEAD_ENRICHMENT_PIPELINE",
+        "description": "Enriches lead data with AI insights"
+      },
+      "email_campaign": {
+        "name": "EMAIL_CAMPAIGN_LAUNCHER",
+        "description": "Sends personalized email campaigns"
+      },
+      "sms_campaign": {
+        "name": "SMS_CAMPAIGN_LAUNCHER",
+        "description": "Sends personalized SMS campaigns"
+      },
+      "response_tracker": {
+        "name": "RESPONSE_TRACKER",
+        "description": "Tracks and processes responses"
+      },
+      "auto_followup": {
+        "name": "AUTO_FOLLOWUP",
+        "description": "Automated follow-up system"
+      }
+    }
+  },
+  "campaign_settings": {
+    "email": {
+      "max_per_day": 50,
+      "warmup_period_days": 14,
+      "send_window_start": "09:00",
+      "send_window_end": "18:00",
+      "timezone": "Europe/Zurich"
+    },
+    "sms": {
+      "max_per_day": 30,
+      "send_window_start": "10:00",
+      "send_window_end": "20:00",
+      "timezone": "Europe/Zurich"
+    },
+    "followup": {
+      "email_delay_days": 2,
+      "sms_delay_days": 7,
+      "max_followups": 3
+    }
+  }
+}

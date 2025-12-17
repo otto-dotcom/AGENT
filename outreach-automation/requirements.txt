@@ -1,0 +1,33 @@
+# Automated Outreach System - Python Dependencies
+
+# Core dependencies
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# OpenAI for AI personalization
+openai>=1.3.0
+
+# Airtable integration
+pyairtable>=2.1.0
+
+# Optional: For enhanced features
+# If you want async support
+aiohttp>=3.9.0
+
+# For data validation
+pydantic>=2.5.0
+
+# For better JSON handling
+ujson>=5.9.0
+
+# For rate limiting
+ratelimit>=2.2.1
+
+# For scheduling (if running locally)
+schedule>=1.2.0
+
+# For timezone handling
+pytz>=2023.3
+
+# For logging
+colorlog>=6.8.0

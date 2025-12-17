@@ -1,0 +1,204 @@
+{
+  "name": "EMAIL_CAMPAIGN_LAUNCHER",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "email-campaign-webhook"
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "options": {
+          "filterByFormula": "{Status} = 'Enriched'",
+          "maxRecords": 50
+        }
+      },
+      "id": "airtable-get-enriched-leads",
+      "name": "Get Enriched Leads",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract first name from contact person\nconst contactPerson = items[0].json.fields['Contact Person'] || '';\nconst firstName = contactPerson.split(' ')[0] || 'there';\n\n// Prepare template variables\nconst templateVars = {\n  firstName: firstName,\n  companyName: items[0].json.fields['Company Name'],\n  industry: items[0].json.fields['Industry'],\n  location: items[0].json.fields['Location'],\n  aiInsight: items[0].json.fields['AI Insight'],\n  painPoint: items[0].json.fields['Pain Point'],\n  senderName: 'Otto'\n};\n\n// Select email template (you can make this dynamic based on A/B testing)\nconst templates = [\n  {\n    subject: `${firstName}, quick question about ${templateVars.companyName}`,\n    body: `Hi ${firstName},\\n\\nI came across ${templateVars.companyName} while researching businesses in ${templateVars.location} and was impressed by ${templateVars.aiInsight}.\\n\\nI work with companies in the ${templateVars.industry} sector helping them ${templateVars.painPoint}. Many businesses we work with in ${templateVars.location} have seen significant improvements.\\n\\nWould you be open to a brief conversation about how we might help ${templateVars.companyName} achieve similar results?\\n\\nNo pressure - just thought it might be worth exploring.\\n\\nBest regards,\\n${templateVars.senderName}\\n\\nP.S. ${templateVars.aiInsight} - this really caught my attention about your business.`\n  }\n];\n\n// Return personalized email\nreturn items.map(item => ({\n  json: {\n    ...item.json,\n    email: item.json.fields['Email'],\n    subject: templates[0].subject,\n    body: templates[0].body,\n    templateVars: templateVars\n  }\n}));"
+      },
+      "id": "personalize-email",
+      "name": "Personalize Email Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "sendEmail",
+        "fromEmail": "${SENDER_EMAIL}",
+        "toEmail": "={{$json.email}}",
+        "subject": "={{$json.subject}}",
+        "text": "={{$json.body}}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "mailchimp-send-email",
+      "name": "Send Email via Mailchimp",
+      "type": "n8n-nodes-base.mailchimp",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "mailchimpApi": {
+          "id": "3",
+          "name": "Mailchimp API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "id": "={{$json.id}}",
+        "fields": {
+          "customFieldsValues": [
+            {
+              "fieldId": "Status",
+              "fieldValue": "Email Sent"
+            },
+            {
+              "fieldId": "Email Sent Date",
+              "fieldValue": "={{$now.toISO()}}"
+            },
+            {
+              "fieldId": "Campaign ID",
+              "fieldValue": "={{$json.campaign_id}}"
+            },
+            {
+              "fieldId": "Email Subject",
+              "fieldValue": "={{$json.subject}}"
+            }
+          ]
+        }
+      },
+      "id": "airtable-update-email-sent",
+      "name": "Update Lead Status",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "✅ Email Campaign Complete\n\nSent {{$json.subject}}\nTo: {{$json.fields['Company Name']}}\nCampaign ID: {{$json.campaign_id}}",
+        "options": {}
+      },
+      "id": "campaign-complete",
+      "name": "Campaign Complete",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "rate-limiter",
+      "name": "Rate Limiter (2s between emails)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Enriched Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Enriched Leads": {
+      "main": [
+        [
+          {
+            "node": "Personalize Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize Email Content": {
+      "main": [
+        [
+          {
+            "node": "Rate Limiter (2s between emails)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limiter (2s between emails)": {
+      "main": [
+        [
+          {
+            "node": "Send Email via Mailchimp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email via Mailchimp": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead Status": {
+      "main": [
+        [
+          {
+            "node": "Campaign Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "tags": ["outreach", "email", "campaign"]
+}

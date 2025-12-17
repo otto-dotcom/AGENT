@@ -1,0 +1,246 @@
+{
+  "name": "LEAD_ENRICHMENT_PIPELINE",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "options": {
+          "filterByFormula": "{Status} = 'Ready for Outreach'",
+          "maxRecords": 50
+        }
+      },
+      "id": "airtable-get-leads",
+      "name": "Get Leads from Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.fields['Company Name']}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.fields['Email']}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.fields['Contact Person']}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "filter-complete-leads",
+      "name": "Filter Complete Records",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4-turbo-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a business research expert. Generate a personalized, genuine observation about a company for outreach purposes. Be specific and authentic - not generic."
+            },
+            {
+              "role": "user",
+              "content": "Generate ONE sentence (15-25 words) showing research about this business:\n\nCompany: {{$json.fields['Company Name']}}\nIndustry: {{$json.fields['Industry']}}\nLocation: {{$json.fields['Location']}}\n\nGenerate only the insight sentence:"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 50
+        }
+      },
+      "id": "openai-generate-insight",
+      "name": "Generate AI Insight",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4-turbo-preview",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an industry analyst. Identify specific, actionable pain points for businesses."
+            },
+            {
+              "role": "user",
+              "content": "What is ONE specific pain point for companies in the {{$json.fields['Industry']}} industry? (10-15 words, actionable and concrete)\n\nGenerate only the pain point:"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 30
+        }
+      },
+      "id": "openai-generate-pain-point",
+      "name": "Generate Pain Point",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "id": "={{$json.id}}",
+        "fields": {
+          "customFieldsValues": [
+            {
+              "fieldId": "Status",
+              "fieldValue": "Enriched"
+            },
+            {
+              "fieldId": "AI Insight",
+              "fieldValue": "={{$json.choices[0].message.content}}"
+            },
+            {
+              "fieldId": "Pain Point",
+              "fieldValue": "={{$json.choices[0].message.content}}"
+            },
+            {
+              "fieldId": "Enriched Date",
+              "fieldValue": "={{$now.toISO()}}"
+            }
+          ]
+        }
+      },
+      "id": "airtable-update-enriched",
+      "name": "Update Lead as Enriched",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "✅ Lead Enrichment Complete\n\nEnriched {{$json.fields['Company Name']}}\nAI Insight: {{$json.fields['AI Insight']}}\nPain Point: {{$json.fields['Pain Point']}}",
+        "options": {}
+      },
+      "id": "success-notification",
+      "name": "Success Notification",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Leads from Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Leads from Airtable": {
+      "main": [
+        [
+          {
+            "node": "Filter Complete Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Complete Records": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Insight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Insight": {
+      "main": [
+        [
+          {
+            "node": "Generate Pain Point",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Pain Point": {
+      "main": [
+        [
+          {
+            "node": "Update Lead as Enriched",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead as Enriched": {
+      "main": [
+        [
+          {
+            "node": "Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "tags": ["outreach", "automation", "ai-enrichment"]
+}

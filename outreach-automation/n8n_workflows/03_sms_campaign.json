@@ -1,0 +1,207 @@
+{
+  "name": "SMS_CAMPAIGN_LAUNCHER",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (Daily 2PM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24,
+              "triggerAtHour": 14
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "options": {
+          "filterByFormula": "AND({Status}='Email Sent', DATETIME_DIFF(NOW(), {Email Sent Date}, 'days') > 2, NOT({Phone Number}=''))",
+          "maxRecords": 30
+        }
+      },
+      "id": "airtable-get-sms-candidates",
+      "name": "Get SMS Candidates",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract first name\nconst contactPerson = items[0].json.fields['Contact Person'] || '';\nconst firstName = contactPerson.split(' ')[0] || 'there';\n\n// Abbreviate company name if needed\nlet companyName = items[0].json.fields['Company Name'] || 'your company';\nif (companyName.length > 30) {\n  companyName = companyName.substring(0, 27) + '...';\n}\n\n// Build SMS message (max 160 characters)\nconst message = `Hi ${firstName}! Quick Q about ${companyName} in ${items[0].json.fields['Location']}. Helped similar ${items[0].json.fields['Industry']} biz grow 40%. Worth a quick chat? Reply YES. -Otto`;\n\nreturn items.map(item => ({\n  json: {\n    ...item.json,\n    phone: item.json.fields['Phone Number'],\n    message: message,\n    characterCount: message.length\n  }\n}));"
+      },
+      "id": "personalize-sms",
+      "name": "Personalize SMS Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "fromPhoneNumber": "${TWILIO_PHONE_NUMBER}",
+        "toPhoneNumber": "={{$json.phone}}",
+        "message": "={{$json.message}}",
+        "options": {}
+      },
+      "id": "twilio-send-sms",
+      "name": "Send SMS via Twilio",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "twilioApi": {
+          "id": "4",
+          "name": "Twilio API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "id": "={{$json.id}}",
+        "fields": {
+          "customFieldsValues": [
+            {
+              "fieldId": "Status",
+              "fieldValue": "SMS Sent"
+            },
+            {
+              "fieldId": "SMS Sent Date",
+              "fieldValue": "={{$now.toISO()}}"
+            },
+            {
+              "fieldId": "SMS Message",
+              "fieldValue": "={{$json.message}}"
+            }
+          ]
+        }
+      },
+      "id": "airtable-update-sms-sent",
+      "name": "Update Lead Status",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "✅ SMS Campaign Complete\n\nSent {{$json.message}}\nTo: {{$json.fields['Company Name']}}\nPhone: {{$json.phone}}\nChars: {{$json.characterCount}}",
+        "options": {}
+      },
+      "id": "sms-campaign-complete",
+      "name": "Campaign Complete",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "id": "rate-limiter-sms",
+      "name": "Rate Limiter (3s between SMS)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Daily 2PM)": {
+      "main": [
+        [
+          {
+            "node": "Get SMS Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get SMS Candidates": {
+      "main": [
+        [
+          {
+            "node": "Personalize SMS Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Personalize SMS Content": {
+      "main": [
+        [
+          {
+            "node": "Rate Limiter (3s between SMS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limiter (3s between SMS)": {
+      "main": [
+        [
+          {
+            "node": "Send SMS via Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send SMS via Twilio": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead Status": {
+      "main": [
+        [
+          {
+            "node": "Campaign Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Zurich"
+  },
+  "versionId": "1",
+  "tags": ["outreach", "sms", "campaign"]
+}

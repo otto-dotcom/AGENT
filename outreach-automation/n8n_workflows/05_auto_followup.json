@@ -1,0 +1,273 @@
+{
+  "name": "AUTO_FOLLOWUP",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "schedule-weekly",
+      "name": "Schedule (Weekly)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": 3,
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "options": {
+          "filterByFormula": "AND(OR({Status}='Email Sent', {Status}='SMS Sent'), DATETIME_DIFF(NOW(), {Email Sent Date}, 'days') > 7, {Followup Count} < 3)",
+          "maxRecords": 100
+        }
+      },
+      "id": "airtable-get-followup-candidates",
+      "name": "Get Follow-up Candidates",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Determine follow-up strategy based on attempt number\nconst followupCount = items[0].json.fields['Followup Count'] || 0;\nconst firstName = items[0].json.fields['Contact Person'].split(' ')[0] || 'there';\nconst companyName = items[0].json.fields['Company Name'];\nconst painPoint = items[0].json.fields['Pain Point'];\nconst location = items[0].json.fields['Location'];\n\nlet subject = '';\nlet body = '';\nlet followupType = '';\n\nif (followupCount === 0) {\n  // First follow-up: Gentle reminder\n  followupType = 'gentle_reminder';\n  subject = `${firstName} - following up`;\n  body = `Hi ${firstName},\\n\\nI know you're busy, so I'll keep this brief.\\n\\nI reached out last week about helping ${companyName} with ${painPoint}. I totally understand if the timing isn't right or if it's not a fit.\\n\\nIf you're interested, I'd still love to have that conversation. If not, just let me know and I won't bother you again.\\n\\nEither way, I hope ${companyName} continues to thrive in ${location}.\\n\\nBest,\\nOtto`;\n} else if (followupCount === 1) {\n  // Second follow-up: Value-add\n  followupType = 'value_add';\n  subject = `${firstName} - thought you'd find this useful`;\n  body = `Hi ${firstName},\\n\\nI wanted to follow up, but rather than just asking again, I thought I'd share something that might be immediately useful for ${companyName}:\\n\\n[Industry-specific tip or resource]\\n\\nThis has been working really well for other businesses in ${location}.\\n\\nStill happy to chat if you'd like to explore how we could help ${companyName} specifically, but either way, hope this is helpful.\\n\\nBest,\\nOtto\\n\\nP.S. If you're not interested in hearing from me, just reply with \"not interested\" and I'll remove you from my list immediately.`;\n} else {\n  // Final follow-up: Break-up email\n  followupType = 'breakup';\n  subject = `${firstName} - should I close your file?`;\n  body = `Hi ${firstName},\\n\\nI've reached out a couple of times about helping ${companyName} with ${painPoint}, but I haven't heard back.\\n\\nThat's totally fine - I know things get busy and this might not be a priority right now.\\n\\nI'm going to assume it's not a fit and won't reach out again unless you tell me otherwise.\\n\\nIf I'm wrong and you're still interested, just reply to this email and we can set up that call.\\n\\nEither way, I wish you and ${companyName} all the best in ${location}.\\n\\nCheers,\\nOtto`;\n}\n\nreturn [{\n  json: {\n    ...items[0].json,\n    email: items[0].json.fields['Email'],\n    subject: subject,\n    body: body,\n    followupType: followupType,\n    followupCount: followupCount + 1\n  }\n}];"
+      },
+      "id": "generate-followup-content",
+      "name": "Generate Follow-up Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "sendEmail",
+        "fromEmail": "${SENDER_EMAIL}",
+        "toEmail": "={{$json.email}}",
+        "subject": "={{$json.subject}}",
+        "text": "={{$json.body}}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "send-followup-email",
+      "name": "Send Follow-up Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "id": "={{$json.id}}",
+        "fields": {
+          "customFieldsValues": [
+            {
+              "fieldId": "Last Followup Date",
+              "fieldValue": "={{$now.toISO()}}"
+            },
+            {
+              "fieldId": "Followup Count",
+              "fieldValue": "={{$json.followupCount}}"
+            },
+            {
+              "fieldId": "Followup Type",
+              "fieldValue": "={{$json.followupType}}"
+            }
+          ]
+        }
+      },
+      "id": "airtable-update-followup",
+      "name": "Update Follow-up Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.followupCount}}",
+              "operation": "largerEqual",
+              "value2": 3
+            }
+          ]
+        }
+      },
+      "id": "if-final-followup",
+      "name": "Is Final Follow-up?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "application": "${AIRTABLE_BASE_ID}",
+        "table": "Leads",
+        "id": "={{$json.id}}",
+        "fields": {
+          "customFieldsValues": [
+            {
+              "fieldId": "Status",
+              "fieldValue": "Closed - No Response"
+            },
+            {
+              "fieldId": "Closed Date",
+              "fieldValue": "={{$now.toISO()}}"
+            }
+          ]
+        }
+      },
+      "id": "airtable-close-lead",
+      "name": "Close Lead (No Response)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [1450, 250],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "✅ Follow-up sent successfully\n\nCompany: {{$json.fields['Company Name']}}\nType: {{$json.followupType}}\nCount: {{$json.followupCount}}",
+        "options": {}
+      },
+      "id": "followup-success",
+      "name": "Follow-up Success",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1450, 350]
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "id": "rate-limiter-followup",
+      "name": "Rate Limiter",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Schedule (Weekly)": {
+      "main": [
+        [
+          {
+            "node": "Get Follow-up Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Follow-up Candidates": {
+      "main": [
+        [
+          {
+            "node": "Generate Follow-up Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Follow-up Content": {
+      "main": [
+        [
+          {
+            "node": "Rate Limiter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limiter": {
+      "main": [
+        [
+          {
+            "node": "Send Follow-up Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Follow-up Email": {
+      "main": [
+        [
+          {
+            "node": "Update Follow-up Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Follow-up Record": {
+      "main": [
+        [
+          {
+            "node": "Is Final Follow-up?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Final Follow-up?": {
+      "main": [
+        [
+          {
+            "node": "Close Lead (No Response)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Follow-up Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Zurich"
+  },
+  "versionId": "1",
+  "tags": ["outreach", "followup", "automation"]
+}

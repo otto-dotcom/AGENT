@@ -429,25 +429,126 @@ footer {
     font-weight: 600;
 }
 
-/* Responsive */
+/* Responsive - Mobile Optimized */
 @media (max-width: 768px) {
-    .tabs {
-        flex-wrap: wrap;
+    body {
+        padding: 0;
     }
 
-    .tab {
-        flex: 1 1 auto;
+    .container {
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    header {
+        padding: 20px;
     }
 
     header h1 {
         font-size: 2em;
     }
 
-    .container {
-        border-radius: 0;
+    .subtitle {
+        font-size: 1em;
     }
 
-    body {
-        padding: 0;
+    .tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tab {
+        flex: 0 0 auto;
+        padding: 12px 20px;
+        font-size: 0.9em;
+    }
+
+    .tab-content {
+        padding: 15px;
+    }
+
+    .card {
+        padding: 20px;
+    }
+
+    .card h2 {
+        font-size: 1.3em;
+    }
+
+    .form-group input,
+    .form-group select {
+        font-size: 16px; /* Prevents iOS zoom */
+    }
+
+    .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .btn-large {
+        padding: 14px 20px;
+        font-size: 1.1em;
+    }
+
+    .config-section,
+    .setup-section {
+        padding: 15px;
+    }
+
+    .result-meta {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .toast {
+        right: 10px;
+        left: 10px;
+        top: 10px;
+    }
+
+    /* Make tables scrollable on mobile */
+    #inspection-content table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .schema-box pre {
+        font-size: 0.75em;
+        overflow-x: auto;
+    }
+
+    /* Better touch targets */
+    .tab,
+    .btn,
+    a {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5em;
+    }
+
+    .subtitle {
+        font-size: 0.9em;
+    }
+
+    .tab-content {
+        padding: 10px;
+    }
+
+    .card {
+        padding: 15px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
     }
 }

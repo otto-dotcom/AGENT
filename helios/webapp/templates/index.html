@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HELIOS - Solar Lead Pipeline</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌞 HELIOS</h1>
+            <p class="subtitle">Solar Lead Scraping & Pipeline</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="inspector">Page Inspector</button>
+            <button class="tab" data-tab="secrets">API Configuration</button>
+            <button class="tab" data-tab="database">Database Setup</button>
+            <button class="tab" data-tab="scraper">Run Scraper</button>
+            <button class="tab" data-tab="results">Results</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+
+            <!-- Page Inspector Tab -->
+            <div id="inspector-tab" class="tab-pane active">
+                <div class="card">
+                    <h2>📄 Page Inspector</h2>
+                    <p>Inspect the GSE.it page to see its actual structure before scraping</p>
+
+                    <button id="inspect-btn" class="btn btn-primary">Inspect Page Structure</button>
+
+                    <div id="inspection-results" class="results-box" style="display:none;">
+                        <h3>Page Structure Analysis</h3>
+                        <div id="inspection-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Configuration Tab -->
+            <div id="secrets-tab" class="tab-pane">
+                <div class="card">
+                    <h2>🔐 API Configuration</h2>
+                    <p>Securely store your API keys for Airtable and Supabase</p>
+
+                    <!-- Airtable Section -->
+                    <div class="config-section">
+                        <h3>Airtable Configuration</h3>
+                        <div class="status" id="airtable-status">
+                            <span class="status-indicator"></span>
+                            <span class="status-text">Not configured</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="airtable-key">API Key</label>
+                            <input type="password" id="airtable-key" placeholder="patXXXXXXXXXXXXXX">
+                            <small>Get from: <a href="https://airtable.com/create/tokens" target="_blank">Airtable API</a></small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="airtable-base">Base ID</label>
+                            <input type="text" id="airtable-base" placeholder="appXXXXXXXXXXXXXX">
+                            <small>Found in your Airtable base URL</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="airtable-table">Table Name</label>
+                            <input type="text" id="airtable-table" placeholder="Solar_Leads" value="Solar_Leads">
+                        </div>
+
+                        <button class="btn btn-secondary" id="test-airtable">Test Connection</button>
+                    </div>
+
+                    <!-- Supabase Section -->
+                    <div class="config-section">
+                        <h3>Supabase Configuration</h3>
+                        <div class="status" id="supabase-status">
+                            <span class="status-indicator"></span>
+                            <span class="status-text">Not configured</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="supabase-url">Project URL</label>
+                            <input type="text" id="supabase-url" placeholder="https://xxxxx.supabase.co">
+                            <small>Get from: Supabase Project Settings</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="supabase-key">API Key (anon/public)</label>
+                            <input type="password" id="supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                            <small>Get from: Supabase Project Settings → API</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="supabase-table">Table Name</label>
+                            <input type="text" id="supabase-table" placeholder="solar_leads" value="solar_leads">
+                        </div>
+
+                        <button class="btn btn-secondary" id="test-supabase">Test Connection</button>
+                    </div>
+
+                    <button class="btn btn-primary" id="save-secrets">💾 Save All Credentials</button>
+                </div>
+            </div>
+
+            <!-- Database Setup Tab -->
+            <div id="database-tab" class="tab-pane">
+                <div class="card">
+                    <h2>🗄️ Database Setup</h2>
+                    <p>Create the required database structures</p>
+
+                    <!-- Airtable Setup -->
+                    <div class="setup-section">
+                        <h3>Airtable Table Setup</h3>
+                        <p>Airtable tables must be created manually. Click below for field specifications:</p>
+                        <button class="btn btn-secondary" id="show-airtable-schema">Show Required Fields</button>
+
+                        <div id="airtable-schema" class="schema-box" style="display:none;">
+                            <h4>Required Fields:</h4>
+                            <ul id="airtable-fields"></ul>
+                        </div>
+                    </div>
+
+                    <!-- Supabase Setup -->
+                    <div class="setup-section">
+                        <h3>Supabase Table Setup</h3>
+                        <p>Copy and run this SQL in your Supabase SQL Editor:</p>
+                        <button class="btn btn-secondary" id="show-supabase-schema">Show SQL Schema</button>
+
+                        <div id="supabase-schema" class="schema-box" style="display:none;">
+                            <pre id="supabase-sql"></pre>
+                            <button class="btn btn-sm" id="copy-sql">📋 Copy SQL</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scraper Tab -->
+            <div id="scraper-tab" class="tab-pane">
+                <div class="card">
+                    <h2>🔍 Run Scraper</h2>
+                    <p>Scrape solar installer leads from GSE.it</p>
+
+                    <div class="form-group">
+                        <label>Target Database</label>
+                        <select id="scrape-target">
+                            <option value="both">Both (Airtable + Supabase)</option>
+                            <option value="airtable">Airtable Only</option>
+                            <option value="supabase">Supabase Only</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="dry-run">
+                            Dry Run (scrape only, don't sync to databases)
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary btn-large" id="run-scraper">
+                        🚀 Start Scraping
+                    </button>
+
+                    <div id="scrape-progress" class="progress-box" style="display:none;">
+                        <h3>Scraping in progress...</h3>
+                        <div class="spinner"></div>
+                        <p id="progress-text">Initializing...</p>
+                    </div>
+
+                    <div id="scrape-results" class="results-box" style="display:none;">
+                        <h3>Scraping Results</h3>
+                        <div id="scrape-stats"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Tab -->
+            <div id="results-tab" class="tab-pane">
+                <div class="card">
+                    <h2>📊 Recent Results</h2>
+                    <p>View recent scraping results</p>
+
+                    <button class="btn btn-secondary" id="refresh-results">🔄 Refresh</button>
+
+                    <div id="results-list" class="results-list">
+                        <!-- Results will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <footer>
+            <p>HELIOS Solar Lead Pipeline v1.0 | Built for GSE.it scraping</p>
+        </footer>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast"></div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

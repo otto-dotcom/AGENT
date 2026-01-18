@@ -22,6 +22,7 @@ from mcp_airtable_connector import MCPAirtableConnector
 from n8n_workflow_manager import N8nWorkflowManager
 from campaign_orchestrator import CampaignOrchestrator
 from personalization_engine import PersonalizationEngine
+from modal_client import get_modal_client
 
 # Initialize FastAPI
 app = FastAPI(
@@ -82,11 +83,25 @@ class TemplateCreate(BaseModel):
     body: str
     variables: List[str]
 
+class ModalCampaignLaunch(BaseModel):
+    campaign_id: str
+    campaign_type: str  # email or sms
+    template: str
+    leads: List[Dict[str, Any]]
+    personalize: bool = True
+    dry_run: bool = True
+
+class ModalPersonalizationRequest(BaseModel):
+    lead_data: Dict[str, Any]
+    template: str
+    model: str = "gpt-4-turbo-preview"
+
 # Initialize services
 airtable = MCPAirtableConnector()
 n8n = N8nWorkflowManager()
 orchestrator = CampaignOrchestrator()
 personalizer = PersonalizationEngine()
+modal_client = get_modal_client()
 
 # Routes
 
@@ -104,7 +119,94 @@ async def health_check():
     """System health check."""
     try:
         health = orchestrator.health_check()
+        health["modal_available"] = modal_client.is_available()
         return health
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Modal Integration Endpoints
+
+@app.get("/api/modal/status")
+async def get_modal_status():
+    """Check Modal integration status."""
+    return {
+        "available": modal_client.is_available(),
+        "message": "Modal integration is active" if modal_client.is_available() else "Modal not connected. Deploy with: modal deploy modal_app.py"
+    }
+
+@app.post("/api/modal/personalize")
+async def personalize_with_modal(request: ModalPersonalizationRequest):
+    """Personalize a message using Modal's AI function."""
+    try:
+        result = await modal_client.personalize_message(
+            lead_data=request.lead_data,
+            template=request.template,
+            model=request.model
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/modal/campaigns/launch")
+async def launch_modal_campaign(
+    campaign: ModalCampaignLaunch,
+    background_tasks: BackgroundTasks
+):
+    """Launch a campaign using Modal serverless execution."""
+    try:
+        if not modal_client.is_available():
+            raise HTTPException(
+                status_code=503,
+                detail="Modal integration not available. Please deploy Modal app first."
+            )
+
+        # Launch campaign on Modal in background
+        background_tasks.add_task(
+            run_modal_campaign_async,
+            campaign.campaign_id,
+            campaign.campaign_type,
+            campaign.leads,
+            campaign.template,
+            campaign.personalize,
+            campaign.dry_run
+        )
+
+        return {
+            "status": "launching",
+            "campaign_id": campaign.campaign_id,
+            "campaign_type": campaign.campaign_type,
+            "lead_count": len(campaign.leads),
+            "personalize": campaign.personalize,
+            "dry_run": campaign.dry_run,
+            "execution_platform": "modal"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/modal/send-email")
+async def send_email_modal(data: dict):
+    """Send a single email via Modal."""
+    try:
+        result = await modal_client.send_email(
+            recipient_email=data.get("email"),
+            subject=data.get("subject"),
+            message=data.get("message"),
+            lead_data=data.get("lead_data")
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/modal/send-sms")
+async def send_sms_modal(data: dict):
+    """Send a single SMS via Modal."""
+    try:
+        result = await modal_client.send_sms(
+            recipient_phone=data.get("phone"),
+            message=data.get("message"),
+            lead_data=data.get("lead_data")
+        )
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -376,6 +478,51 @@ async def run_campaign_async(campaign_type: str, lead_ids: List[str], template_i
     except Exception as e:
         await manager.broadcast({
             "type": "campaign_error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        })
+
+async def run_modal_campaign_async(
+    campaign_id: str,
+    campaign_type: str,
+    leads: List[Dict[str, Any]],
+    template: str,
+    personalize: bool,
+    dry_run: bool
+):
+    """Run campaign on Modal asynchronously."""
+    try:
+        # Broadcast start
+        await manager.broadcast({
+            "type": "modal_campaign_started",
+            "campaign_id": campaign_id,
+            "campaign_type": campaign_type,
+            "lead_count": len(leads),
+            "timestamp": datetime.now().isoformat()
+        })
+
+        # Execute campaign on Modal
+        result = await modal_client.execute_campaign(
+            campaign_id=campaign_id,
+            campaign_type=campaign_type,
+            leads=leads,
+            template=template,
+            personalize=personalize,
+            dry_run=dry_run
+        )
+
+        # Broadcast completion
+        await manager.broadcast({
+            "type": "modal_campaign_completed",
+            "campaign_id": campaign_id,
+            "result": result,
+            "timestamp": datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        await manager.broadcast({
+            "type": "modal_campaign_error",
+            "campaign_id": campaign_id,
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         })

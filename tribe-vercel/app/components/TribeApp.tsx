@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 
-const SPACE_ID = 'Otto808808/tribe-v2';
+const SPACE_ID = 'beta3/TRIBE_V2_Neural_Activity_Predictor';
 
 type Modality = 'Video' | 'Audio' | 'Text';
 
@@ -86,7 +86,7 @@ export default function TribeApp() {
           const obj = timelineRaw as Record<string, unknown>;
           timelineUrl = (obj.url ?? obj.path ?? '') as string;
           if (timelineUrl && !timelineUrl.startsWith('http')) {
-            timelineUrl = `https://otto808808-tribe-v2.hf.space/file=${timelineUrl}`;
+            timelineUrl = `https://beta3-tribe-v2-neural-activity-predictor.hf.space/file=${timelineUrl}`;
           }
         }
       }

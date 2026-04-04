@@ -54,22 +54,29 @@ export default function TribeApp() {
 
     try {
       const client = await getClient();
+
+      // Log available API endpoints for debugging
+      try {
+        const api = await client.view_api();
+        console.log('[TRIBE] Available API endpoints:', JSON.stringify(api, null, 2));
+      } catch { /* non-fatal */ }
+
       setProgress('Queued — processing takes 2–4 min on first run…');
 
       const videoArg = modality === 'Video' && videoFile ? videoFile : null;
       const audioArg = modality === 'Audio' && audioFile ? audioFile : null;
       const textArg  = modality === 'Text' ? text.trim() : '';
 
-      // fn order in app.py: 0=toggle_inputs, 1=download_sample, 2=run_prediction
-      const res = await client.predict('/run_prediction', [
-        modality,
-        videoArg,
-        audioArg,
-        textArg,
-        nTimesteps,
-        vmin,
-        modality === 'Video',
-      ]);
+      const args = [modality, videoArg, audioArg, textArg, nTimesteps, vmin, modality === 'Video'];
+
+      // Try named endpoint first, fall back to fn_index 2
+      let res;
+      try {
+        res = await client.predict('/run_prediction', args);
+      } catch (namedErr) {
+        console.warn('[TRIBE] Named endpoint failed, trying fn_index 2:', namedErr);
+        res = await client.predict(2, args);
+      }
 
       const data = res.data as [string, unknown, string];
       const brain3dHtml = data[0] as string;
@@ -93,7 +100,15 @@ export default function TribeApp() {
       setResult({ brain3d: brain3dHtml, timelineUrl, status: statusStr });
       setProgress('');
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
+      console.error('[TRIBE] Prediction error:', e);
+      let msg: string;
+      if (e instanceof Error) {
+        msg = e.message;
+      } else if (typeof e === 'object' && e !== null) {
+        msg = JSON.stringify(e);
+      } else {
+        msg = String(e);
+      }
       setError(msg);
       setProgress('');
       _client = null;

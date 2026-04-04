@@ -2,7 +2,9 @@
 
 import { useState, useRef, useCallback } from 'react';
 
-const SPACE_ID = 'beta3/TRIBE_V2_Neural_Activity_Predictor';
+const SPACE_URL = 'https://beta3-tribe-v2-neural-activity-predictor.hf.space';
+// run_prediction is fn_index 2 (0=toggle_inputs, 1=download_sample, 2=run_prediction)
+const FN_INDEX = 2;
 
 type Modality = 'Video' | 'Audio' | 'Text';
 
@@ -12,19 +14,85 @@ interface PredictResult {
   status: string;
 }
 
-// Lazy-load @gradio/client (browser-only)
-let _client: Awaited<ReturnType<(typeof import('@gradio/client'))['Client']['connect']>> | null = null;
-
-async function getClient() {
-  const { Client } = await import('@gradio/client');
-  if (!_client) {
-    _client = await Client.connect(SPACE_ID, {
-      events: ['data', 'status'],
-    });
-  }
-  return _client;
+// ── Raw Gradio queue API (bypasses @gradio/client schema validation) ───────────
+function randomHash(len = 10) {
+  return Math.random().toString(36).slice(2, 2 + len);
 }
 
+async function gradioPredict(
+  args: unknown[],
+  onStatus: (msg: string) => void,
+): Promise<unknown[]> {
+  const sessionHash = randomHash();
+
+  // 1. Join the queue
+  const joinRes = await fetch(`${SPACE_URL}/queue/join`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      data: args,
+      fn_index: FN_INDEX,
+      session_hash: sessionHash,
+      event_data: null,
+      trigger_id: null,
+    }),
+  });
+  if (!joinRes.ok) {
+    const text = await joinRes.text();
+    throw new Error(`Queue join failed (${joinRes.status}): ${text}`);
+  }
+
+  // 2. Stream SSE events from /queue/data
+  return new Promise((resolve, reject) => {
+    const url = `${SPACE_URL}/queue/data?session_hash=${sessionHash}`;
+    const src = new EventSource(url);
+
+    const timeout = setTimeout(() => {
+      src.close();
+      reject(new Error('Timed out waiting for result (10 min)'));
+    }, 10 * 60 * 1000);
+
+    src.onmessage = (ev) => {
+      let msg: Record<string, unknown>;
+      try { msg = JSON.parse(ev.data); } catch { return; }
+
+      const stage = msg.msg as string;
+      console.log('[TRIBE] queue event:', stage, msg);
+
+      if (stage === 'estimation') {
+        const rank = msg.rank as number ?? '?';
+        onStatus(`Queued (position ${rank})… first run may take 2–4 min`);
+      } else if (stage === 'process_starts') {
+        onStatus('Processing on GPU…');
+      } else if (stage === 'process_generating') {
+        onStatus('Generating output…');
+      } else if (stage === 'process_completed') {
+        clearTimeout(timeout);
+        src.close();
+        const out = msg.output as { data?: unknown[]; error?: string };
+        if (msg.success && out?.data) {
+          resolve(out.data);
+        } else {
+          reject(new Error(out?.error ?? JSON.stringify(msg)));
+        }
+      } else if (stage === 'error') {
+        clearTimeout(timeout);
+        src.close();
+        const title = msg.title as string ?? 'Error';
+        const message = msg.message as string ?? JSON.stringify(msg);
+        reject(new Error(`${title}: ${message}`));
+      }
+    };
+
+    src.onerror = () => {
+      clearTimeout(timeout);
+      src.close();
+      reject(new Error('SSE connection dropped'));
+    };
+  });
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function TribeApp() {
   const [modality, setModality] = useState<Modality>('Text');
   const [text, setText] = useState(
@@ -55,24 +123,16 @@ export default function TribeApp() {
     }
 
     try {
-      const client = await getClient();
-      setProgress('Queued — processing takes 2–4 min on first run…');
+      const textArg = modality === 'Text' ? text.trim() : '';
+      // File args: for video/audio we pass null for now (text is primary)
+      const args = [modality, null, null, textArg, nTimesteps, vmin, false];
 
-      const videoArg = modality === 'Video' && videoFile ? videoFile : null;
-      const audioArg = modality === 'Audio' && audioFile ? audioFile : null;
-      const textArg  = modality === 'Text' ? text.trim() : '';
+      const data = await gradioPredict(args, setProgress) as [string, unknown, string];
 
-      const args = [modality, videoArg, audioArg, textArg, nTimesteps, vmin, modality === 'Video'];
-
-      // Endpoint confirmed as /predict (fn_index 2)
-      const res = await client.predict('/predict', args);
-
-      const data = res.data as [string, unknown, string];
       const brain3dHtml = data[0] as string;
       const timelineRaw = data[1];
       const statusStr   = data[2] as string;
 
-      // gr.Plot returns { url, path, ... } or a plain string
       let timelineUrl = '';
       if (timelineRaw) {
         if (typeof timelineRaw === 'string') {
@@ -81,7 +141,7 @@ export default function TribeApp() {
           const obj = timelineRaw as Record<string, unknown>;
           timelineUrl = (obj.url ?? obj.path ?? '') as string;
           if (timelineUrl && !timelineUrl.startsWith('http')) {
-            timelineUrl = `https://beta3-tribe-v2-neural-activity-predictor.hf.space/file=${timelineUrl}`;
+            timelineUrl = `${SPACE_URL}/file=${timelineUrl}`;
           }
         }
       }
@@ -89,37 +149,15 @@ export default function TribeApp() {
       setResult({ brain3d: brain3dHtml, timelineUrl, status: statusStr });
       setProgress('');
     } catch (e: unknown) {
-      console.error('[TRIBE] Prediction error:', e);
-      let msg: string;
-      if (e instanceof Error) {
-        // Gradio sometimes embeds a JSON payload in the Error message
-        try {
-          const parsed = JSON.parse(e.message);
-          msg = parsed.title
-            ? `${parsed.title}: ${parsed.message}`
-            : parsed.message ?? e.message;
-        } catch {
-          msg = e.message;
-        }
-      } else if (typeof e === 'object' && e !== null) {
-        const obj = e as Record<string, unknown>;
-        msg = obj.title
-          ? `${obj.title}: ${obj.message}`
-          : obj.message
-            ? String(obj.message)
-            : JSON.stringify(e);
-      } else {
-        msg = String(e);
-      }
-      setError(msg);
+      console.error('[TRIBE]', e);
+      setError(e instanceof Error ? e.message : JSON.stringify(e));
       setProgress('');
-      _client = null;
     } finally {
       setLoading(false);
     }
-  }, [loading, modality, text, videoFile, audioFile, nTimesteps, vmin]);
+  }, [loading, modality, text, nTimesteps, vmin]);
 
-  // Inject the brain HTML (which is already an <iframe srcdoc="..."> string)
+  // Inject the brain HTML string (already an <iframe srcdoc="..."> element)
   const brainRef = useCallback((node: HTMLDivElement | null) => {
     if (!node || !result?.brain3d) return;
     node.innerHTML = result.brain3d;
@@ -149,9 +187,9 @@ export default function TribeApp() {
       </header>
 
       <div className="notice">
-        <strong>Note</strong>&nbsp; This app calls the HuggingFace ZeroGPU Space directly from your browser.
-        First run may take <strong>2–4 minutes</strong> (downloads WhisperX). Subsequent runs are faster.
-        <strong> Text</strong> is the fastest modality to test with.
+        <strong>Note</strong>&nbsp; Calls the HuggingFace ZeroGPU Space directly.
+        First run takes <strong>2–4 minutes</strong> (model + WhisperX download).
+        Text is the fastest modality.
       </div>
 
       <div className="main-grid">
@@ -179,6 +217,9 @@ export default function TribeApp() {
                   <div className="file-drop-hint">mp4 · mkv · avi</div>
                   {videoFile && <div className="file-name">✓ {videoFile.name}</div>}
                 </label>
+                <div style={{fontSize:'0.72rem',color:'var(--dim)',marginTop:6}}>
+                  Video upload coming soon — use Text or Audio for now.
+                </div>
               </div>
             )}
 
@@ -192,6 +233,9 @@ export default function TribeApp() {
                   <div className="file-drop-hint">wav · mp3 · flac</div>
                   {audioFile && <div className="file-name">✓ {audioFile.name}</div>}
                 </label>
+                <div style={{fontSize:'0.72rem',color:'var(--dim)',marginTop:6}}>
+                  Audio upload coming soon — use Text for now.
+                </div>
               </div>
             )}
 
@@ -275,7 +319,7 @@ export default function TribeApp() {
       <div style={{ marginTop: 40, fontSize: '0.72rem', color: 'var(--dim)', lineHeight: 1.7, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
         <strong style={{ color: 'var(--border)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.62rem' }}>Notes</strong>
         <ul style={{ marginTop: 6, paddingLeft: 16 }}>
-          <li>Text input requires the gated <strong style={{color:'var(--dim)'}}>LLaMA 3.2-3B</strong> model on HuggingFace — if text fails, try audio/video.</li>
+          <li>Text input requires the gated <strong style={{color:'var(--dim)'}}>LLaMA 3.2-3B</strong> model — if text fails, the Space may need a HF_TOKEN env var set.</li>
           <li>The 3D view is interactive: drag to rotate, scroll to zoom, use the time slider to navigate seconds.</li>
           <li>Output is predicted fMRI BOLD on fsaverage5 mesh — 20,484 cortical vertices at 1 s resolution.</li>
           <li>This is an unofficial frontend. Model weights and official demo by Meta FAIR (CC BY-NC 4.0).</li>

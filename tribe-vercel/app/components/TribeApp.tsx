@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 
+// Using our own fork with a ZeroGPU-compatible duration (120s vs the broken 300s)
 const SPACE_ID = 'beta3/TRIBE_V2_Neural_Activity_Predictor';
 
 type Modality = 'Video' | 'Audio' | 'Text';
@@ -69,14 +70,8 @@ export default function TribeApp() {
 
       const args = [modality, videoArg, audioArg, textArg, nTimesteps, vmin, modality === 'Video'];
 
-      // Try named endpoint first, fall back to fn_index 2
-      let res;
-      try {
-        res = await client.predict('/run_prediction', args);
-      } catch (namedErr) {
-        console.warn('[TRIBE] Named endpoint failed, trying fn_index 2:', namedErr);
-        res = await client.predict(2, args);
-      }
+      // Endpoint is /predict (fn_index 2) — confirmed from API introspection
+      const res = await client.predict('/predict', args);
 
       const data = res.data as [string, unknown, string];
       const brain3dHtml = data[0] as string;
@@ -103,9 +98,22 @@ export default function TribeApp() {
       console.error('[TRIBE] Prediction error:', e);
       let msg: string;
       if (e instanceof Error) {
-        msg = e.message;
+        // Gradio sometimes embeds a JSON payload in the Error message
+        try {
+          const parsed = JSON.parse(e.message);
+          msg = parsed.title
+            ? `${parsed.title}: ${parsed.message}`
+            : parsed.message ?? e.message;
+        } catch {
+          msg = e.message;
+        }
       } else if (typeof e === 'object' && e !== null) {
-        msg = JSON.stringify(e);
+        const obj = e as Record<string, unknown>;
+        msg = obj.title
+          ? `${obj.title}: ${obj.message}`
+          : obj.message
+            ? String(obj.message)
+            : JSON.stringify(e);
       } else {
         msg = String(e);
       }

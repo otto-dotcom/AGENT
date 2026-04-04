@@ -268,7 +268,7 @@ def build_3d_figure(preds: np.ndarray, vmin_val: float = 0.5) -> str:
 
 
 # ── Core inference ─────────────────────────────────────────────────────────────
-@spaces.GPU(duration=300)
+@spaces.GPU(duration=120)
 def run_prediction(input_type, video_file, audio_file, text_input, n_timesteps, vmin_val, show_stimuli):
     model, plotter = _load_model()
 

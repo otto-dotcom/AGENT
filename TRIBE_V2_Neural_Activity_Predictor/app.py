@@ -787,6 +787,7 @@ with gr.Blocks() as demo:
         inputs=[input_type, video_file, audio_file, text_input, n_timesteps, vmin_slider, show_stimuli],
         outputs=[brain_3d, timeline_plot, status_md],
         show_progress="full",
+        api_name="predict",
     )
 
 demo.launch(

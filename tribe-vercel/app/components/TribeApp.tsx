@@ -2,9 +2,9 @@
 
 import { useState, useRef, useCallback } from 'react';
 
-// annienja is the only real TRIBE v2 clone running on ZeroGPU (zero-a10g)
-const SPACE_ID  = 'annienja/TRIBE_V2_Neural_Activity_Predictor';
-const SPACE_URL = 'https://annienja-tribe-v2-neural-activity-predictor.hf.space';
+// Our own Space — api_name="predict" set, duration=120s, ready for ZeroGPU once Pro is active
+const SPACE_ID  = 'Otto808808/tribe-v2';
+const SPACE_URL = 'https://otto808808-tribe-v2.hf.space';
 
 type Modality = 'Video' | 'Audio' | 'Text';
 
@@ -65,10 +65,8 @@ export default function TribeApp() {
 
       const args = [modality, videoArg, audioArg, textArg, nTimesteps, vmin, modality === 'Video'];
 
-      // Use numeric fn_index 2 — this bypasses @gradio/client schema validation
-      // and directly targets run_prediction (0=toggle_inputs, 1=download_sample, 2=run_prediction)
-      // This is what successfully reached the server before (we got ZeroGPU error from server-side)
-      const res = await client.predict(2, args);
+      // Clean named endpoint — api_name="predict" is set in our Space's app.py
+      const res = await client.predict('/predict', args);
 
       const data = res.data as [string, unknown, string];
       const brain3dHtml = data[0] as string;

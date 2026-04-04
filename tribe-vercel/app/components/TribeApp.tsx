@@ -18,7 +18,9 @@ let _client: Awaited<ReturnType<(typeof import('@gradio/client'))['Client']['con
 async function getClient() {
   const { Client } = await import('@gradio/client');
   if (!_client) {
-    _client = await Client.connect(SPACE_ID);
+    _client = await Client.connect(SPACE_ID, {
+      events: ['data', 'status'],
+    });
   }
   return _client;
 }
@@ -54,13 +56,6 @@ export default function TribeApp() {
 
     try {
       const client = await getClient();
-
-      // Log available API endpoints for debugging
-      try {
-        const api = await client.view_api();
-        console.log('[TRIBE] Available API endpoints:', JSON.stringify(api, null, 2));
-      } catch { /* non-fatal */ }
-
       setProgress('Queued — processing takes 2–4 min on first run…');
 
       const videoArg = modality === 'Video' && videoFile ? videoFile : null;
@@ -69,7 +64,7 @@ export default function TribeApp() {
 
       const args = [modality, videoArg, audioArg, textArg, nTimesteps, vmin, modality === 'Video'];
 
-      // Endpoint is /predict (fn_index 2) — confirmed from API introspection
+      // Endpoint confirmed as /predict (fn_index 2)
       const res = await client.predict('/predict', args);
 
       const data = res.data as [string, unknown, string];

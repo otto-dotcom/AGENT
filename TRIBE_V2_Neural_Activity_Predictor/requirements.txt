@@ -1,0 +1,23 @@
+# TRIBE v2 — HuggingFace Spaces requirements
+#
+# NOTE: Do NOT pin gradio here — HF Spaces pre-installs its own version
+# (currently 6.10.0) and any conflicting pin will break the build.
+ 
+# Install tribev2 directly from GitHub with the [plotting] extra
+tribev2[plotting] @ git+https://github.com/facebookresearch/tribev2.git
+ 
+# ZeroGPU support (pre-installed on HF Spaces but listed for clarity)
+spaces>=0.19.4
+ 
+# Ensure headless matplotlib backend works
+matplotlib>=3.8.0
+ 
+# huggingface_hub for HF_TOKEN login helper
+huggingface_hub>=0.23.0
+ 
+# tribev2 uses `uvx` internally to run WhisperX (audio transcription).
+# Installing uv via pip makes the `uvx` binary available in PATH.
+uv>=0.4.0
+ 
+# 3D brain visualization
+plotly>=5.18.0

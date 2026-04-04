@@ -1,0 +1,4 @@
+libosmesa6
+libgl1
+libegl1
+libgles2

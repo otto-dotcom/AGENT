@@ -1,0 +1,25 @@
+name: Iran Monitor
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Fetch Polymarket
+        run: curl -s "https://polymarket.com/event/us-forces-enter-iran-by" > data.html
+
+      - name: Fetch News
+        run: curl -s "https://news.google.com/rss/search?q=US+Iran+troops" > news.xml
+
+      - name: Output Summary
+        run: |
+          echo "POLYMARKET SNAPSHOT"
+          grep -i "price" data.html || true
+          echo "NEWS SNAPSHOT"
+          grep -i "Iran" news.xml | head -n 20 || true

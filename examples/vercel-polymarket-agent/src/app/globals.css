@@ -1,0 +1,41 @@
+:root { color-scheme: dark; }
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #0b1020;
+  color: #e6ebff;
+}
+.container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.subtitle { color: #a9b3d7; }
+.chat {
+  margin: 20px 0;
+  min-height: 360px;
+  border: 1px solid #2c355e;
+  border-radius: 10px;
+  padding: 12px;
+  background: #101733;
+}
+.msg { margin-bottom: 10px; line-height: 1.45; }
+.msg.user { color: #9ad1ff; }
+.msg.assistant { color: #d7ddff; }
+.composer { display: flex; gap: 10px; }
+.composer input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #2c355e;
+  background: #121a3b;
+  color: #fff;
+}
+.composer button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #5379ff;
+  color: #fff;
+  cursor: pointer;
+}

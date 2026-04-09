@@ -1,66 +1,53 @@
-# Vercel-style Polymarket Betting Agent (Human-Gated Execution)
+# Polymarket Betting Agent (Vercel Deployment Ready)
 
-This is a starter agent that lets you:
+This starter gives you a web chat agent you can deploy on Vercel.
 
-- chat to research markets,
-- inspect token order books,
-- draft bets,
-- and only execute bets when **you** explicitly confirm them.
+## What it does
 
-## Safety model: "only bets I tell it to take"
+- Researches active Polymarket markets.
+- Fetches order book snapshots.
+- Drafts bets first.
+- Executes only after exact user confirmation: `CONFIRM BET <bet_id>`.
 
-Execution is hard-gated in two layers:
+## Safety model (human-gated execution)
 
-1. The system prompt forbids automatic execution.
-2. The `execute_bet` tool requires an exact phrase:
+Execution is blocked unless both are true:
 
-```text
-CONFIRM BET <bet_id>
-```
+1. You explicitly ask to execute.
+2. You provide exact confirmation phrase for a drafted bet ID.
 
-If the phrase does not match exactly, the order is rejected.
+If either check fails, no order is submitted.
 
-## Quick start
-
-1. Install dependencies:
+## Run locally
 
 ```bash
 npm install
-```
-
-2. Copy env file and fill credentials:
-
-```bash
 cp .env.example .env
-```
-
-3. Start in dry-run mode (default):
-
-```bash
 npm run dev
 ```
 
-4. In chat, ask it to:
-   - find a market,
-   - check token order book,
-   - draft a bet,
-   - then execute only after you send `CONFIRM BET <bet_id>`.
+Open `http://localhost:3000`.
 
 ## Environment variables
 
-- `OPENAI_API_KEY`: model key for the agent.
-- `POLYMARKET_PRIVATE_KEY`: wallet private key for live trading.
-- `POLYMARKET_FUNDER_ADDRESS`: funder address used by CLOB client.
-- `POLYMARKET_DRY_RUN`: defaults to `true`; set to `false` for live order submission.
+- `OPENAI_API_KEY` (required)
+- `POLYMARKET_PRIVATE_KEY` (required for live orders)
+- `POLYMARKET_FUNDER_ADDRESS` (required for live orders)
+- `POLYMARKET_DRY_RUN` (default `true`; set `false` to enable live order submission)
 
-## Files
+## Deploy to Vercel
 
-- `src/agent.ts`: model + tools + confirmation guardrails.
-- `src/polymarket.ts`: market data calls + order placement.
-- `src/cli.ts`: interactive chat loop.
+```bash
+npm i -g vercel
+vercel link
+vercel --prod
+```
 
-## Notes
+When prompted, add the same environment variables in the Vercel project.
 
-- Use dry-run mode first.
-- You are responsible for strategy, sizing, and regional compliance.
-- This starter is for educational use and should be audited before production deployment.
+## Project files
+
+- `src/app/page.tsx` — chat UI
+- `src/app/api/chat/route.ts` — model+tool orchestration endpoint
+- `src/agent.ts` — tools and confirmation guardrails
+- `src/polymarket.ts` — Polymarket API / CLOB client helpers

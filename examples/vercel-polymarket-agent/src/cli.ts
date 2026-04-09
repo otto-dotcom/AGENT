@@ -2,7 +2,7 @@ import "dotenv/config";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import type { CoreMessage } from "ai";
-import { runAgent } from "./agent.js";
+import { runAgent } from "./agent";
 
 async function main() {
   const rl = readline.createInterface({ input, output });
